@@ -88,6 +88,17 @@ last
 fileff(string myfile,string functionName) (?) 
 
 
+#The idea is to define a rectangle to freeze for an arbitrary number of frames. Similar to FreezeFrame().
+Dependencies: Masktools2
+Syntax: FreezeBox(int startFrame, int endFrame, int sourceFrame, int width, int height, int offsetX, int offsetY, bool show)
+Usage:
+FreezeBox(50, 250, 49, 400, 500)
+#Translation: For frames 50-250, use a box from frame 49. That box has a 400 pixel width and 500 pixel height and starts from the top left.
+
+FreezeBox(100, 120, 50, 200, 300, 250, 400)
+#Translation: For frames 100-120, use a box from frame 50. That box has a 200 pixel width and 300 pixel height. That box starts 250 pixels across and 400 pixels down.
+#That means the bottom right corner of the box will extend to (550,700).
+
 """ #end documentation#
 #start functions#
 
@@ -231,5 +242,27 @@ function redoSceneFilter(clip clip1, clip original, int frameStart, int frameEnd
     sceneFilter(frameStart,frameEnd,filterGroup)
 }
 
-#end functions#
 
+#It should be possible to define arbitrary shapes by using a more complex mask. Possibly user specified.
+#Dependency: masktools2
+function FreezeBox(clip clp, int startFrame, int endFrame, int sourceFrame, int width, int height, int "offsetX", int "offsetY", bool "show")
+{
+offsetX= default(offsetX, 0)
+offsetY= default(offsetY, 0)
+show= default(show, false)
+
+#freeze over the entire sequence specified
+frozenClip=clp.FreezeFrame(startFrame,endFrame,sourceFrame)
+
+#create mask/white clip for use with shape data, black for debug purposes
+whiteClip=originalClip.Levels(255, 10.0, 0, 255, 255,coring=false)
+blackClip=originalClip.Levels(0, 1.0, 255, 0, 0,coring=false)
+
+return (show==false) ? Eval("""
+        mt_merge(originalClip,frozenClip,whiteClip,w=width,h=height,offX=offsetX,offY=offsetY,luma=true)
+    """)  : Eval("""
+        mt_merge(originalClip,blackClip,whiteClip,w=width,h=height,offX=offsetX,offY=offsetY,luma=true)
+    """)
+}
+
+#end functions#
