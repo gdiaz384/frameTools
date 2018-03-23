@@ -88,16 +88,27 @@ last
 fileff(string myfile,string functionName) (?) 
 
 
-#The idea is to define a rectangle to freeze for an arbitrary number of frames. Similar to FreezeFrame().
+#The idea is to define a rectangle area to replace. Can work similar to FreezeFrame() but for parts of a frame or be used to embed one clip inside of another.
 Dependencies: Masktools2
-Syntax: FreezeBox(int startFrame, int endFrame, int sourceFrame, int width, int height, int offsetX, int offsetY, bool show)
+function ReplaceBox(clip clp, int "offsetX", int "offsetY", int "width", int "height", int "startFrame", int "endFrame", int "sourceFrame", clip "clip2", bool "show")
 Usage:
-FreezeBox(50, 250, 49, 400, 500)
-#Translation: For frames 50-250, use a box from frame 49. That box has a 400 pixel width and 500 pixel height and starts from the top left.
+ReplaceBox(0, 0, 200, 300, show=true)
+#Translation: Starting at coordinate (0,0) (top left), create a 200x300 pixel box.
 
-FreezeBox(100, 120, 50, 200, 300, 250, 400)
-#Translation: For frames 100-120, use a box from frame 50. That box has a 200 pixel width and 300 pixel height. That box starts 250 pixels across and 400 pixels down.
-#That means the bottom right corner of the box will extend to (550,700).
+ReplaceBox(250, 400, 200, 300, show=true)
+#Translation: Start at coordinate (250,400) and use a 200x300 box. This means the bottom right corner of the box will extend to (450,700).
+
+ReplaceBox(0, 0, 400, 500, startFrame=50, endFrame=250, sourceFrame=49)
+#Translation: Start from the top left and use a 400x500 box. The contents displayed for frames 50-250 will be from frame 49. 
+
+ReplaceBox(250, 400, 200, 300, 100, 120, 50)
+#Translation: Start at coordinate (250,400) and use a 200x300 box. The box only affects frames 100-120, using the contents from frame 50.
+
+ReplaceBox(250, 400, 200, 300, clip2=last.Greyscale())
+#Translation: Start at coordinate (250,400) and use a 200x300 box. The box contents are from a different clip with identical properties.
+
+ReplaceBox(250, 400, 200, 300, 100, 120, 50, clip2=last.Greyscale())
+#Translation: Start at coordinate (250,400) and use a 200x300 box. The box freezes frames 100-120, using the contents from frame 50 from clip2. The normal frames from clip2 are for replacements outside of [100-120]. Note: Specifying clip2 will always replace the contents for the entire clip regardless of the specified range of frames to freeze.
 
 """ #end documentation#
 #start functions#
@@ -243,25 +254,42 @@ function redoSceneFilter(clip clip1, clip original, int frameStart, int frameEnd
 }
 
 
-#It should be possible to define arbitrary shapes by using a more complex mask. Possibly user specified.
+#It should be possible to define arbitrary shapes by using a more complex mask.
 #Dependency: masktools2
-function FreezeBox(clip clp, int startFrame, int endFrame, int sourceFrame, int width, int height, int "offsetX", int "offsetY", bool "show")
+function ReplaceBox(clip clp, int "offsetX", int "offsetY", int "width", int "height", int "startFrame", int "endFrame", int "sourceFrame", clip "clip2", bool "show")
 {
 offsetX= default(offsetX, 0)
 offsetY= default(offsetY, 0)
+startFrame= default(startFrame, -1)
+endFrame= default(endFrame, -1)
+sourceFrame= default(sourceFrame, -1)
+clip2= default(clip2,clp)
 show= default(show, false)
 
-#freeze over the entire sequence specified
-frozenClip=clp.FreezeFrame(startFrame,endFrame,sourceFrame)
+#If sourceFrame was specified, freeze frame over the range specified from clip2
+outputClip = (sourceFrame==-1) ? Eval("""
+        clip2
+    """)  : Eval("""
+        clip2.FreezeFrame(startFrame,endFrame,sourceFrame)
+    """)
 
-#create mask/white clip for use with shape data, black for debug purposes
-whiteClip=originalClip.Levels(255, 10.0, 0, 255, 255,coring=false)
-blackClip=originalClip.Levels(0, 1.0, 255, 0, 0,coring=false)
+#create mask/white clip
+#whiteClip=clp.Levels(255, 10.0, 0, 255, 255,coring=false)
+
+#create debug clip
+#blackClip = (show==false) ? Eval("""
+#        1
+#    """)  : Eval("""
+#        clp.Levels(0, 1.0, 255, 0, 0,coring=false)
+#    """)
+
+#if show==false return mt_merge(clp,outputClip,whiteClip,w=width,h=height,offX=offsetX,offY=offsetY,luma=true)
+#if show==true return mt_merge(clp,blackClip,whiteClip,w=width,h=height,offX=offsetX,offY=offsetY,luma=true)
 
 return (show==false) ? Eval("""
-        mt_merge(originalClip,frozenClip,whiteClip,w=width,h=height,offX=offsetX,offY=offsetY,luma=true)
+        mt_merge(clp,outputClip,clp.Levels(255, 10.0, 0, 255, 255,coring=false),w=width,h=height,offX=offsetX,offY=offsetY,luma=true)
     """)  : Eval("""
-        mt_merge(originalClip,blackClip,whiteClip,w=width,h=height,offX=offsetX,offY=offsetY,luma=true)
+        mt_merge(clp,clp.Levels(0, 1.0, 255, 0, 0,coring=false),clp.Levels(255, 10.0, 0, 255, 255,coring=false),w=width,h=height,offX=offsetX,offY=offsetY,luma=true)
     """)
 }
 

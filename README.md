@@ -1,10 +1,19 @@
 # frameTools
 
-frameTools is a set of AviSynth functions for manipulating frames and clips.
+frameTools is a set of AviSynth functions for manipulating frames and clips. frameTools supports:
 
-Most notably, it supports scene filtering.
+- Quickly fixing bad frames via duplication.
+- Splicing one clip into another. Uses:
+   - Merging stabalized and unstabalized clips.
+   - Replacing OP/EDs with NCOP/NCEDs.
+   - Replacing sceneA_filteredDifferently.lossless.mkv into current clip.
+- (Inefficent) scene filtering. Tip: Use [ReplaceFramesSimple](http://avisynth.nl/index.php?title=RemapFrames) instead.
+- Splicing parts of frames with parts of another clip.
+- Freezing parts of a frame for a range of frames.
 
-The development emphasis is on zero-configuration "just works" software.
+## Download:
+
+Click [here](https://github.com/gdiaz384/frameTools/releases) or on "releases" at the top to download the latest version.
 
 ## Documentation:
 
@@ -88,23 +97,43 @@ function ed(clip clip2){last=clip2
 Tweak(sat=1.0)
 }
 last
+
+#The idea is to define a rectangle area to replace. Can work similar to FreezeFrame() but for parts of a frame or be used to embed one clip inside of another.
+Dependencies: Masktools2
+function ReplaceBox(clip clp, int "offsetX", int "offsetY", int "width", int "height", int "startFrame", int "endFrame", int "sourceFrame", clip "clip2", bool "show")
+Usage:
+ReplaceBox(0, 0, 200, 300, show=true)
+#Translation: Starting at coordinate (0,0) (top left), create a 200x300 pixel box.
+
+ReplaceBox(250, 400, 200, 300, show=true)
+#Translation: Start at coordinate (250,400) and use a 200x300 box. This means the bottom right corner of the box will extend to (450,700).
+
+ReplaceBox(0, 0, 400, 500, startFrame=50, endFrame=250, sourceFrame=49)
+#Translation: Start from the top left and use a 400x500 box. The contents displayed for frames 50-250 will be from frame 49. 
+
+ReplaceBox(250, 400, 200, 300, 100, 120, 50)
+#Translation: Start at coordinate (250,400) and use a 200x300 box. The box only affects frames 100-120, using the contents from frame 50.
+
+ReplaceBox(250, 400, 200, 300, clip2=last.Greyscale())
+#Translation: Start at coordinate (250,400) and use a 200x300 box. The box contents are from a different clip with identical properties.
+
+ReplaceBox(250, 400, 200, 300, 100, 120, 50, clip2=last.Greyscale())
+#Translation: Start at coordinate (250,400) and use a 200x300 box. The box freezes frames 100-120, using the contents from frame 50 from clip2. The normal frames from clip2 are for replacements outside of [100-120]. Note: Specifying clip2 will always replace the contents for the entire clip regardless of the specified range of frames to freeze.
 ```
+
+Example for ReplaceBox:
+
+![ReplaceBoxExample](pics/ReplaceBoxExampleSettings.jpg)
 
 ## Limitations and Dependencies:
 
 * sceneFilter(), redoSceneFilter(), and fclip() do not support modifying the first or last 2 frames of a clip.
-* Make sure the number of total frames in the master clip stays the same when near the edges.
+    * Make sure the number of total frames in the master clip stays the same when near the edges.
+* replaceBox() requires [MaskTools2](http://avisynth.nl/index.php/MaskTools2).
 * (optional) If using the mff(), merge fix frame, function, it has [this dependency](http://avisynth.org.ru/badframes/badframes.html).
 * If downloading from github manually, instead of using an offical_release.zip then remember to change the line ending back from broken-because-of-github to Dos\Windows using [Notepad++](//notepad-plus-plus.org/download).
 
-Click [here](https://github.com/gdiaz384/frameTools/releases) or on "releases" at the top to download the latest version.
-
-# One day
-
-* I will figure out how to crop a section from one video and automatically insert it into another video with a simple UI.
-* When that day comes, I will add that functionality. One day...
-
 ## License:
-Pick your License: any version of GPL/BSD/MIT or Apache
+Pick your License: any version of GPL/BSD/MIT or Apache.
 
 If I get any questions on licensing, I'm changing this to "beerware" and will refuse to elaborate further.
